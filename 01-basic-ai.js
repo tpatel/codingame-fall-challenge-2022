@@ -18,7 +18,7 @@ while (true) {
   const neutralTiles = [];
 
   var inputs = readline().split(" ");
-  const myMatter = parseInt(inputs[0]);
+  let myMatter = parseInt(inputs[0]);
   const oppMatter = parseInt(inputs[1]);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -67,25 +67,33 @@ while (true) {
 
   const actions = [];
 
-  for (const tile of myTiles) {
-    if (tile.canSpawn) {
-      const amount = 0; //TODO: pick amount of robots to spawn here
-      if (amount > 0) {
-        actions.push(`SPAWN ${amount} ${tile.x} ${tile.y}`);
-      }
-    }
-    if (tile.canBuild) {
-      const shouldBuild = false; //TODO: pick whether to build recycler here
-      if (shouldBuild) {
-        actions.push(`BUILD ${tile.x} ${tile.y}`);
-      }
-    }
+  const targetTiles = [
+    ...oppTiles,
+    ...neutralTiles.filter((tile) => tile.scrapAmount > 0),
+  ];
+  const canSpawnTiles = myTiles.filter((tile) => tile.canSpawn);
+
+  canSpawnTiles.map((tile) => {
+    const distances = targetTiles.map((target) => distance(tile, target));
+    tile.spawnScore = distances.reduce((a, b) => a + b, 0) / distances.length;
+    return tile;
+  });
+  canSpawnTiles.sort((a, b) => a.spawnScore - b.spawnScore);
+
+  const target = canSpawnTiles[0];
+  if (target && myMatter >= 10) {
+    actions.push(`SPAWN ${1} ${target.x} ${target.y}`);
+  }
+
+  function distance(a, b) {
+    return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
   }
 
   for (const tile of myUnits) {
-    const target = null; //TODO: pick a destination
+    targetTiles.sort((a, b) => distance(tile, a) - distance(tile, b));
+    const target = targetTiles[0];
     if (target) {
-      const amount = 0; //TODO: pick amount of units to move
+      const amount = tile.units > 1 ? tile.units - 1 : 1;
       actions.push(
         `MOVE ${amount} ${tile.x} ${tile.y} ${target.x} ${target.y}`
       );
